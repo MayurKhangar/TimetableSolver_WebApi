@@ -1,0 +1,240 @@
+{
+	"info": {
+		"_postman_id": "9f2c8b3e-4a1d-4e6f-9c3a-timetablesolvercoll",
+		"name": "Timetable Solver API",
+		"description": "Full-school CP-SAT timetable generation API. Run order: Health Check -> Load Data -> Generate Timetable -> the four GET reports. Select the 'TimetableSolver - Local' environment before running, or edit baseUrl to point at another host. Runnable end-to-end via Postman Runner or Newman.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Reports healthy', function () {",
+							"    const body = pm.response.json();",
+							"    pm.expect(body.status).to.eql('healthy');",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/health",
+					"host": [ "{{baseUrl}}" ],
+					"path": [ "health" ]
+				},
+				"description": "Liveness check. No dataset is loaded by this call."
+			},
+			"response": []
+		},
+		{
+			"name": "Load Data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Load succeeded', function () {",
+							"    const body = pm.response.json();",
+							"    pm.expect(body.success).to.be.true;",
+							"    pm.expect(body.summary.sectionsTotal).to.be.above(0);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/timetable/load-data",
+					"host": [ "{{baseUrl}}" ],
+					"path": [ "api", "timetable", "load-data" ]
+				},
+				"description": "Loads and normalizes the configured dataset (Sample or FullDataset, per appsettings.json) into memory. Returns a summary plus any data conflicts found (UNASSIGNED-TT rows, zero-workload rows, missing curriculum, etc.). Call this before Generate, or let Generate auto-load for you."
+			},
+			"response": []
+		},
+		{
+			"name": "Generate Timetable",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Response has a solver status', function () {",
+							"    const body = pm.response.json();",
+							"    pm.expect(body.solver).to.have.property('status');",
+							"    pm.expect(body.solver).to.have.property('wallTimeMs');",
+							"    console.log('Solver status:', body.solver.status, '| success:', body.success);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/timetable/generate",
+					"host": [ "{{baseUrl}}" ],
+					"path": [ "api", "timetable", "generate" ]
+				},
+				"description": "Builds the CP-SAT model from the loaded (or auto-loaded) dataset and solves it. On success returns every scheduled lesson grouped by section and by teacher. On failure returns the solver status plus a structured explanation (schedulingConflicts / dataConflicts) of why no schedule exists."
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Section Timetables",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200 or 404', function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+							"});",
+							"",
+							"pm.test('404 only if nothing generated yet', function () {",
+							"    if (pm.response.code === 404) {",
+							"        pm.expect(pm.response.json().message).to.include('generate');",
+							"    }",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/timetable/sections",
+					"host": [ "{{baseUrl}}" ],
+					"path": [ "api", "timetable", "sections" ]
+				},
+				"description": "Returns every section's weekly timetable from the most recent successful generation. 404 if Generate has not produced a schedule yet."
+			},
+			"response": []
+		},
+		{
+			"name": "Get One Section Timetable",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200 or 404', function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/timetable/sections/{{sectionId}}",
+					"host": [ "{{baseUrl}}" ],
+					"path": [ "api", "timetable", "sections", "{{sectionId}}" ]
+				},
+				"description": "Returns one section's timetable by its raw id (not display name), e.g. 'class-1-lily'. Set the sectionId environment variable to a real id from Data/school-sample.json or Data/sections.json. 404 if the id is unknown or nothing has been generated yet."
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Teacher Timetables",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200, 204, or 404', function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/timetable/teachers",
+					"host": [ "{{baseUrl}}" ],
+					"path": [ "api", "timetable", "teachers" ]
+				},
+				"description": "Returns every teacher's combined weekly timetable (across all sections they teach) from the most recent successful generation. 404 if nothing has been generated at all yet. Note: if the last Generate call resolved to INFEASIBLE, this currently returns 204 No Content (ASP.NET Core auto-converts the null TeacherTimetables payload) rather than the empty-object 200 that /sections returns for the same situation -- a minor existing API inconsistency, not a Postman issue."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Conflicts Report",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('Status code is 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Response has both conflict arrays', function () {",
+							"    const body = pm.response.json();",
+							"    pm.expect(body).to.have.property('dataConflicts');",
+							"    pm.expect(body).to.have.property('schedulingConflicts');",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/timetable/conflicts",
+					"host": [ "{{baseUrl}}" ],
+					"path": [ "api", "timetable", "conflicts" ]
+				},
+				"description": "Returns data-quality conflicts (bad/missing input rows) and scheduling conflicts (why the solver could not find a full schedule, if applicable) from the current in-memory state. Safe to call any time, even before Load Data."
+			},
+			"response": []
+		}
+	],
+	"event": [],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5236"
+		},
+		{
+			"key": "sectionId",
+			"value": "class-1-lily"
+		}
+	]
+}

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TimetableSolver.Api</RootNamespace>
+    <AssemblyName>TimetableSolver.Api</AssemblyName>
+    <UserSecretsId>7a1c3b6e-9e2f-4b7a-8b0a-timetable-solver</UserSecretsId>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TimetableSolver.Domain\TimetableSolver.Domain.csproj" />
+    <ProjectReference Include="..\TimetableSolver.Application\TimetableSolver.Application.csproj" />
+    <ProjectReference Include="..\TimetableSolver.Infrastructure\TimetableSolver.Infrastructure.csproj" />
+    <ProjectReference Include="..\TimetableSolver.Solver\TimetableSolver.Solver.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Data\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

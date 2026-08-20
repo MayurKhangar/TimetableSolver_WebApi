@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TimetableSolver.Solver</RootNamespace>
+    <AssemblyName>TimetableSolver.Solver</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TimetableSolver.Domain\TimetableSolver.Domain.csproj" />
+    <ProjectReference Include="..\TimetableSolver.Application\TimetableSolver.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.OrTools" Version="9.10.4067" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+	 <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+	 <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

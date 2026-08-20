@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TimetableSolver.Application</RootNamespace>
+    <AssemblyName>TimetableSolver.Application</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TimetableSolver.Domain\TimetableSolver.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
