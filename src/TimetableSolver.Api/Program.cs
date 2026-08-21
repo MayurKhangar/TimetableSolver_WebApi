@@ -44,8 +44,8 @@ app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 
-app.MapGet("/", () => Results.Redirect("/swagger"));
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestampUtc = DateTime.UtcNow }));
+//app.MapGet("/", () => Results.Redirect("/swagger"));
+//app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestampUtc = DateTime.UtcNow }));
 
 app.Run();
 
