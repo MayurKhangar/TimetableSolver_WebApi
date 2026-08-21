@@ -12,11 +12,6 @@ public sealed class CurriculumItem
     public required int PeriodsPerWeek { get; init; }
     public required int MaxPeriodsPerDay { get; init; }
 
-    /// <summary>
-    /// Settable (not <c>init</c>) because a post-load reconciliation step may clear it after construction,
-    /// when a teacher's aggregate class-level assignment exceeds weekly capacity and this specific item is
-    /// the one excluded to bring that teacher back under capacity (see `TeacherOverloadReconciler`).
-    /// </summary>
     public string? TeacherId { get; set; }
 
     public bool IsUnassignedPlaceholder { get; init; }
