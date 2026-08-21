@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using TimetableSolver.Application.Exceptions;
 using TimetableSolver.Application.Interfaces;
+using TimetableSolver.Infrastructure.Parsing;
 
 namespace TimetableSolver.Infrastructure.Repositories;
 
@@ -27,7 +28,7 @@ public sealed class JsonSectionRepository : ISectionRepository
         try
         {
             await using var stream = File.OpenRead(_filePath);
-            var document = await JsonSerializer.DeserializeAsync<SectionsFileModel>(stream, JsonOptions, cancellationToken)
+            var document = await JsonSerializer.DeserializeAsync<SectionsFileModel>(stream, JsonDefaults.Options, cancellationToken)
                 ?? throw new DataLoadException("sections.json deserialized to null.", _filePath);
 
             var records = document.Sections
@@ -42,11 +43,6 @@ public sealed class JsonSectionRepository : ISectionRepository
             throw new DataLoadException($"sections.json is not valid JSON: {ex.Message}", _filePath, ex);
         }
     }
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     private sealed record SectionsFileModel(
         [property: JsonPropertyName("sections")] List<SectionRecordModel> Sections);

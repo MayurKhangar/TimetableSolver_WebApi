@@ -5,6 +5,7 @@ using TimetableSolver.Application.Exceptions;
 using TimetableSolver.Application.Interfaces;
 using TimetableSolver.Domain.Entities;
 using TimetableSolver.Domain.Enums;
+using TimetableSolver.Infrastructure.Parsing;
 
 namespace TimetableSolver.Infrastructure.Repositories;
 
@@ -35,7 +36,7 @@ public sealed class JsonSampleSchoolRepository : ISampleSchoolRepository
         try
         {
             await using var stream = File.OpenRead(_filePath);
-            model = await JsonSerializer.DeserializeAsync<SampleFileModel>(stream, JsonOptions, cancellationToken)
+            model = await JsonSerializer.DeserializeAsync<SampleFileModel>(stream, JsonDefaults.Options, cancellationToken)
                 ?? throw new DataLoadException("school-sample.json deserialized to null.", _filePath);
         }
         catch (JsonException ex)
@@ -153,11 +154,6 @@ public sealed class JsonSampleSchoolRepository : ISampleSchoolRepository
 
         return new BellSchedule { WorkingDays = workingDays, Slots = slots };
     }
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     private sealed record SampleFileModel(
         [property: JsonPropertyName("academicYear")] string AcademicYear,

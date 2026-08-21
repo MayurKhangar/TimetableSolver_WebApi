@@ -44,6 +44,7 @@ public sealed class FullDatasetSchoolDataService : ISchoolDataService
         var bellSchedule = await bellScheduleTask;
 
         var teachersByCode = teacherRoster.ToDictionary(t => t.Code, t => t, StringComparer.OrdinalIgnoreCase);
+        var teachersById = teachersByCode.Values.ToDictionary(t => t.Id, t => t);
         var curriculumByKey = curriculumRows
             .GroupBy(r => r.CurriculumKey, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
@@ -97,6 +98,8 @@ public sealed class FullDatasetSchoolDataService : ISchoolDataService
             sections.Add(section);
         }
 
+        TeacherOverloadReconciler.Reconcile(sections, teachersById, bellSchedule.WeeklyTeachingCapacity, conflicts);
+
         _logger.LogInformation(
             "Built full-dataset school model: {Sections} sections, {Teachers} teachers, {Conflicts} data conflicts",
             sections.Count, teachersByCode.Count, conflicts.Count);
@@ -106,15 +109,15 @@ public sealed class FullDatasetSchoolDataService : ISchoolDataService
             AcademicYear = "2026-27",
             BellSchedule = bellSchedule,
             Sections = sections,
-            TeachersById = teachersByCode.Values.ToDictionary(t => t.Id, t => t),
+            TeachersById = teachersById,
             DataConflicts = conflicts
         };
     }
 
     private static CurriculumItem ResolveCurriculumItem(
         Section section,
-        Application.Interfaces.RawCurriculumRow curriculumRow,
-        Dictionary<(string ClassLabel, string ItemName), List<Application.Interfaces.RawAssignmentRow>> realAssignmentsByKey,
+        RawCurriculumRow curriculumRow,
+        Dictionary<(string ClassLabel, string ItemName), List<RawAssignmentRow>> realAssignmentsByKey,
         HashSet<(string ClassLabel, string ItemName)> placeholderKeys,
         Dictionary<string, Teacher> teachersByCode,
         List<DataConflict> conflicts)
@@ -184,12 +187,10 @@ public sealed class FullDatasetSchoolDataService : ISchoolDataService
         return BuildItem(itemId, section, curriculumRow, teacherId: null, isPlaceholder: false);
     }
 
- 
-    private static Application.Interfaces.RawAssignmentRow PickBestMatch(
-        List<Application.Interfaces.RawAssignmentRow> matches, Section section, string itemName, List<DataConflict> conflicts)
+    private static RawAssignmentRow PickBestMatch(
+        List<RawAssignmentRow> matches, Section section, string itemName, List<DataConflict> conflicts)
     {
-        var ordered = matches.OrderByDescending(m => m.PeriodsPerWeekForClass).ToList();
-        var chosen = ordered[0];
+        var chosen = matches.MaxBy(m => m.PeriodsPerWeekForClass)!;
 
         conflicts.Add(new DataConflict
         {
@@ -206,7 +207,7 @@ public sealed class FullDatasetSchoolDataService : ISchoolDataService
     }
 
     private static CurriculumItem BuildItem(
-        string id, Section section, Application.Interfaces.RawCurriculumRow curriculumRow, string? teacherId, bool isPlaceholder) => new()
+        string id, Section section, RawCurriculumRow curriculumRow, string? teacherId, bool isPlaceholder) => new()
     {
         Id = id,
         SectionId = section.Id,
@@ -227,6 +228,8 @@ public sealed class FullDatasetSchoolDataService : ISchoolDataService
             string.Equals(x.ItemName, y.ItemName, StringComparison.OrdinalIgnoreCase);
 
         public int GetHashCode((string ClassLabel, string ItemName) obj) =>
-            HashCode.Combine(obj.ClassLabel.ToUpperInvariant(), obj.ItemName.ToUpperInvariant());
+            HashCode.Combine(
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.ClassLabel),
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.ItemName));
     }
 }

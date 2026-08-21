@@ -47,9 +47,17 @@ public static class TimetableMapper
                 Validation: null);
         }
 
-        var summary = new GenerationSummaryDto(SectionsTotal: result.SectionsTotal, SectionsScheduled: result.SectionsScheduled,TotalSlotsScheduled: result.Lessons.Count,
-            TeachersInvolved: result.TeachersInvolved, UnassignedPlaceholderRows: result.DataConflicts.Count(c => c.Type == DataConflictType.UnassignedTeacher),
-            ZeroWorkloadRows: result.DataConflicts.Count(c => c.Type == DataConflictType.ZeroWorkload));
+        var conflictCountsByType = result.DataConflicts
+            .GroupBy(c => c.Type)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var summary = new GenerationSummaryDto(
+            SectionsTotal: result.SectionsTotal,
+            SectionsScheduled: result.SectionsScheduled,
+            TotalSlotsScheduled: result.Lessons.Count,
+            TeachersInvolved: result.TeachersInvolved,
+            UnassignedPlaceholderRows: conflictCountsByType.GetValueOrDefault(DataConflictType.UnassignedTeacher),
+            ZeroWorkloadRows: conflictCountsByType.GetValueOrDefault(DataConflictType.ZeroWorkload));
 
         var sectionTimetables = result.Lessons
             .GroupBy(l => l.SectionDisplayName)

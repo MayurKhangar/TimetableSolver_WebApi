@@ -5,6 +5,7 @@ using TimetableSolver.Application.Exceptions;
 using TimetableSolver.Application.Interfaces;
 using TimetableSolver.Domain.Entities;
 using TimetableSolver.Domain.Enums;
+using TimetableSolver.Infrastructure.Parsing;
 
 namespace TimetableSolver.Infrastructure.Repositories;
 
@@ -30,7 +31,7 @@ public sealed class JsonBellScheduleRepository : IBellScheduleRepository
         try
         {
             await using var stream = File.OpenRead(_filePath);
-            model = await JsonSerializer.DeserializeAsync<BellScheduleFileModel>(stream, JsonOptions, cancellationToken)
+            model = await JsonSerializer.DeserializeAsync<BellScheduleFileModel>(stream, JsonDefaults.Options, cancellationToken)
                 ?? throw new DataLoadException("bell-schedule.json deserialized to null.", _filePath);
         }
         catch (JsonException ex)
@@ -74,11 +75,6 @@ public sealed class JsonBellScheduleRepository : IBellScheduleRepository
         "FRIDAY" => SchoolDay.Friday,
         "SATURDAY" => SchoolDay.Saturday,
         _ => throw new DataLoadException($"Unrecognized working day '{raw}' in bell-schedule.json")
-    };
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
     };
 
     private sealed record BellScheduleFileModel(

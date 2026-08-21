@@ -135,11 +135,19 @@ across Grade 1's 4 sections, not one section's requirement).
    or no assignment row at all as a `DataConflict` — **once per affected section**, so you can
    see exactly which sections are blocked, not just which classes.
 
-**This is the direct cause of `POST /generate` returning `INFEASIBLE` on the full 41-section
-run** — see §11 below. It is not a solver bug; it is a real consequence of not having
-section-level data. Swapping in the real xlsx loader (`ClosedXML`, per the assessment's
-suggested package) would resolve it; the `ITeacherAssignmentRepository` interface is already
-shaped to support a section-level source with zero changes to anything above it.
+**This used to be the direct cause of `POST /generate` returning `INFEASIBLE` on the full
+41-section run**: applying one teacher to every section of a grade at once can push that
+teacher's aggregate weekly load above capacity (H1's "no double-booking" then makes the whole
+model unsatisfiable, not just that teacher's sections). `TeacherOverloadReconciler` now runs
+right after the school model is built and, for any teacher over capacity, excludes just enough
+of their assigned curriculum items (deterministically, in section-id order) to bring them back
+under capacity — each exclusion reported as a `DataConflictType.TeacherOverload` conflict. This
+is exactly what AC-3 allows ("exclude only rows with documented data conflicts"): every section
+that has *any* resolvable curriculum still gets a real, `Optimal` timetable; only the specific
+excess rows for the two affected teachers are left out and clearly reported. Swapping in the
+real xlsx loader (`ClosedXML`, per the assessment's suggested package) would remove the need for
+this reconciliation entirely; the `ITeacherAssignmentRepository` interface is already shaped to
+support a section-level source with zero changes to anything above it.
 
 ---
 
@@ -152,7 +160,7 @@ shaped to support a section-level source with zero changes to anything above it.
 | Class-subjects with no assignment row at all | `DataConflictType.MissingAssignment` |
 | Ambiguous class-subject (2+ teachers listed) | `DataConflictType.AmbiguousAssignment` — highest-workload row is used, rest are reported |
 | Pre-Primary / KG sections (no curriculum in `CLASS_WISE_SUBJECTS.md`) | `DataConflictType.MissingCurriculum`; those sections are excluded from generation (`SchedulableSections`) — matches the brief's optional P4 rule |
-| Teacher whose total assigned load exceeds weekly capacity | `DataConflictType.TeacherOverload`, computed post-solve when the model is `INFEASIBLE` |
+| Teacher whose total assigned load exceeds weekly capacity | `DataConflictType.TeacherOverload` — excluded pre-solve by `TeacherOverloadReconciler` so it no longer blocks the rest of the model; also re-checked post-solve as a safety net for data sources that skip reconciliation |
 | Empty `teacher_availability` | Assumed fully available (documented in `TIMETABLE_GENERATION_DATA_REQUIREMENTS.md` itself; no H2 rule needed since there's nothing to restrict against) |
 | No Computer Lab / Science Lab rooms | Room rules (R1/R2) not implemented — rooms are empty in every provided file, so there is nothing to model; documented as out-of-scope per the brief |
 
@@ -287,18 +295,21 @@ graph.
 **Included and enforced in CP-SAT:** every Tier-1 hard rule and Tier-2 block/layout rule from
 the assessment brief (see the Rule-ID map in §7), the soft Mathematics-in-the-morning
 preference, and full data-conflict reporting for unassigned/zero-workload/ambiguous/missing
-teacher assignments and missing curriculum.
+teacher assignments and missing curriculum. **Verified live**: `POST /generate` against the full
+41-section dataset returns `Optimal` with all 30 sections that have any resolvable curriculum
+scheduled (750 lessons); the other 11 are Pre-Primary/Nursery/KG sections with no curriculum
+data at all (see P4 below), not a solver failure.
 
 **Intentionally not implemented**, each because the corresponding input data is genuinely empty
 or absent in the provided package (not skipped for convenience):
 
 - **Rooms (R1/R2)** — every provided room-related file/section is empty (no `room_type_id`, no
   active labs) — there is nothing to schedule against.
-- **Section-level xlsx assignments** — see §5. This is the one gap that actually changes the
-  full 41-section result (two teachers end up nominally responsible for more periods/week than
-  exist, because the class-level file assigns them to *every* section of a grade at once).
-  Plugging in the real `TEACHER_CLASS_ALLOCATION.xlsx` is the single change that would remove
-  this limitation.
+- **Section-level xlsx assignments** — see §5. Without it, a handful of individual curriculum
+  rows (two teachers' worth, ~13 section-subject pairs) can't be scheduled and are reported via
+  `DataConflictType.TeacherOverload` — `TeacherOverloadReconciler` keeps that from blocking the
+  other 28 unaffected sections. Plugging in the real `TEACHER_CLASS_ALLOCATION.xlsx` would remove
+  the need for that reconciliation and let those specific rows schedule too.
 - **Persistence** — results live in `ITimetableStateStore` (in-memory singleton) for the
   lifetime of the process, matching "not required" in the assessment brief. Swapping in
   `timetable_versions` / `weekly_timetables` tables would only touch this one interface.

@@ -38,22 +38,9 @@ public sealed class OrToolsTimetableGenerationService : ITimetableGenerationServ
             var isSolved = outcome.Status is SolverStatus.Optimal or SolverStatus.Feasible;
             var lessons = isSolved ? ExtractLessons(school, variables, outcome.Solver) : Array.Empty<ScheduledLesson>();
 
-            var dataConflicts = school.DataConflicts;
-            var schedulingConflicts = ruleNotes;
-
-            if (!isSolved)
-            {
-                var overloadConflicts = DiagnoseTeacherOverload(school);
-                dataConflicts = dataConflicts.Concat(overloadConflicts).ToList();
-
-                schedulingConflicts = overloadConflicts.Count > 0
-                    ? ruleNotes.Concat(overloadConflicts.Select(c => c.Message)).ToList()
-                    : ruleNotes.Append(
-                        "No single teacher exceeds weekly capacity, so infeasibility likely comes from a combination of " +
-                        "overlapping constraints (e.g. G1/G2/L1 interacting with a tight bell schedule) rather than one " +
-                        "obvious cause. Re-run with EnableSoftObjective=false or a longer TimeLimitSeconds, or inspect the " +
-                        "model per section.").ToList();
-            }
+            var (dataConflicts, schedulingConflicts) = isSolved
+                ? (school.DataConflicts, ruleNotes)
+                : BuildFailureReport(school, ruleNotes);
 
             var scheduledSectionIds = lessons.Select(l => l.SectionId).Distinct().Count();
 
@@ -109,6 +96,29 @@ public sealed class OrToolsTimetableGenerationService : ITimetableGenerationServ
         }
 
         return lessons.OrderBy(l => l.SectionDisplayName).ThenBy(l => l.Day).ThenBy(l => l.Period).ToList();
+    }
+
+    /// <summary>
+    /// Builds the conflict report for a failed solve: any remaining teacher-overload cause (normally
+    /// already pre-empted by <c>TeacherOverloadReconciler</c> for the FullDataset source, but checked
+    /// again here as a safety net for any data source that doesn't run that reconciliation step) plus a
+    /// generic fallback note when no single teacher is individually over capacity.
+    /// </summary>
+    private static (IReadOnlyList<DataConflict> DataConflicts, IReadOnlyList<string> SchedulingConflicts) BuildFailureReport(
+        SchoolModel school, IReadOnlyList<string> ruleNotes)
+    {
+        var overloadConflicts = DiagnoseTeacherOverload(school);
+        var dataConflicts = school.DataConflicts.Concat(overloadConflicts).ToList();
+
+        var schedulingConflicts = overloadConflicts.Count > 0
+            ? ruleNotes.Concat(overloadConflicts.Select(c => c.Message)).ToList()
+            : ruleNotes.Append(
+                "No single teacher exceeds weekly capacity, so infeasibility likely comes from a combination of " +
+                "overlapping constraints (e.g. G1/G2/L1 interacting with a tight bell schedule) rather than one " +
+                "obvious cause. Re-run with EnableSoftObjective=false or a longer TimeLimitSeconds, or inspect the " +
+                "model per section.").ToList();
+
+        return (dataConflicts, schedulingConflicts);
     }
 
     private static IReadOnlyList<DataConflict> DiagnoseTeacherOverload(SchoolModel school)

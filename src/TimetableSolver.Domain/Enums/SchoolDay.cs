@@ -1,9 +1,6 @@
 namespace TimetableSolver.Domain.Enums;
 
-/// <summary>
-/// The six working days supported by the bell schedule. Numeric values intentionally
-/// mirror the 1 = Monday .. 6 = Saturday convention documented in the source data.
-/// </summary>
+
 public enum SchoolDay
 {
     Monday = 1,
